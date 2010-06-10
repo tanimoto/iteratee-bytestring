@@ -1,6 +1,6 @@
-module Data.Iteratee.Exception (
+module Data.Iteratee.Exception
+  ( IFException (..)
   -- * Exception types
-    IFException (..)
   -- ** Enumerator exceptions
   , EnumException (..)
   , DivergentException (..)
@@ -16,7 +16,7 @@ module Data.Iteratee.Exception (
   , enStrExc
   , iterStrExc
   , wrapIterExc
-) where
+  ) where
 
 ------------------------------------------------------------------------
 -- Imports

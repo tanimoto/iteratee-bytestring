@@ -1,4 +1,4 @@
-Name:                iter
+Name:                iteratee-bytestring
 Version:             0.1.1
 Synopsis:            Iteratee IO
 Description:         Iteratee IO
@@ -17,26 +17,23 @@ Library
 
   Exposed-modules:
     Data.Iteratee
-    Data.Iteratee.List
-    Data.Iteratee.ByteString
     Data.Iteratee.Exception
     Data.Iteratee.IO
 
   Other-modules:
     Data.Iteratee.Base
-    Data.Iteratee.List.Base
-    Data.Iteratee.List.IO
-    Data.Iteratee.ByteString.Base
-    Data.Iteratee.ByteString.IO
 
   Build-depends:
     base >= 4 && < 5,
+    containers >= 0.3 && < 0.4,
+    prelude-core >= 0.1 && < 0.2,
+--    sequence >= 0.0 && < 0.1,
     bytestring >= 0.9 && < 1.0,
     transformers >= 0.2 && < 0.3,
     MonadCatchIO-transformers >= 0.2 && < 0.3
 
   Extensions:
-    GADTs, RankNTypes, BangPatterns, DeriveDataTypeable, CPP
+    GADTs, RankNTypes, BangPatterns, DeriveDataTypeable
 
   GHC-Options:
     -Wall -O2 -funbox-strict-fields
@@ -44,18 +41,18 @@ Library
   Ghc-Prof-Options:
     -auto-all -caf-all
 
-Executable bench_strings
-  Hs-Source-Dirs: tests
-  Main-Is: bench_strings.hs
-
-  Build-depends:
-    base >= 4 && < 5,
-    iter >= 0.1 && < 0.2,
-    bytestring >= 0.9 && < 1.0,
-    criterion >= 0.5 && < 0.6
-
-  GHC-Options:
-    -Wall -O2 -funbox-strict-fields
-
-  Ghc-Prof-Options:
-    -auto-all -caf-all
+--Executable bench_strings
+--  Hs-Source-Dirs: tests
+--  Main-Is: bench_strings.hs
+-- 
+--  Build-depends:
+--    base >= 4 && < 5,
+--    iter >= 0.1 && < 0.2,
+--    bytestring >= 0.9 && < 1.0,
+--    criterion >= 0.5 && < 0.6
+-- 
+--  GHC-Options:
+--    -Wall -O2 -funbox-strict-fields
+-- 
+--  Ghc-Prof-Options:
+--    -auto-all -caf-all

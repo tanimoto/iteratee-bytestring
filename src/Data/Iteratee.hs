@@ -1,8 +1,8 @@
-module Data.Iteratee (
-  module Data.Iteratee.Base
-, module Data.Iteratee.Exception
-, module Data.Iteratee.IO
-) where
+module Data.Iteratee
+  ( module Data.Iteratee.Base
+  , module Data.Iteratee.Exception
+  , module Data.Iteratee.IO
+  ) where
 
 ------------------------------------------------------------------------
 -- Imports
