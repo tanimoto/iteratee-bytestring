@@ -12,6 +12,7 @@ module Data.Iteratee.Base
   , iterList
   , iterStream
   , iterConst
+  , length
   , Enumerator
   , Enumeratee
   , exceptEnd
@@ -209,6 +210,13 @@ iterStream = liftIter (step mempty)
 
 iterConst :: (Monad m) => a -> Iteratee m a
 iterConst x = iterDone x mempty
+
+length :: (Monad m) => Iteratee m Int
+length = liftIter (step 0)
+  where
+  step !acc (Chunk str) = liftIter (step (acc + Fold.foldl' size 0 str))
+  step !acc str         = iterDone acc str
+  size !acc str         = acc + Byte.length str
 
 ------------------------------------------------------------------------------
 --

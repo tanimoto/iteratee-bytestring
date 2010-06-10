@@ -1,7 +1,7 @@
 Name:                iteratee-bytestring
 Version:             0.1.1
-Synopsis:            Iteratee IO
-Description:         Iteratee IO
+Synopsis:            Iteratee IO with ByteStrings
+Description:         Iteratee IO with ByteStrings
 License:             BSD3
 License-file:        LICENSE
 Author:              Paulo Tanimoto, John Lato
@@ -27,7 +27,6 @@ Library
     base >= 4 && < 5,
     containers >= 0.3 && < 0.4,
     prelude-core >= 0.1 && < 0.2,
---    sequence >= 0.0 && < 0.1,
     bytestring >= 0.9 && < 1.0,
     transformers >= 0.2 && < 0.3,
     MonadCatchIO-transformers >= 0.2 && < 0.3
@@ -41,18 +40,19 @@ Library
   Ghc-Prof-Options:
     -auto-all -caf-all
 
---Executable bench_strings
---  Hs-Source-Dirs: tests
---  Main-Is: bench_strings.hs
--- 
---  Build-depends:
---    base >= 4 && < 5,
---    iter >= 0.1 && < 0.2,
---    bytestring >= 0.9 && < 1.0,
---    criterion >= 0.5 && < 0.6
--- 
---  GHC-Options:
---    -Wall -O2 -funbox-strict-fields
--- 
---  Ghc-Prof-Options:
---    -auto-all -caf-all
+Executable bench_strings
+  Hs-Source-Dirs: tests
+  Main-Is: bench_strings.hs
+
+  Build-depends:
+    base >= 4 && < 5,
+    prelude-core >= 0.1 && < 0.2,
+    bytestring >= 0.9 && < 1.0,
+    iteratee-bytestring >= 0.1 && < 0.2,
+    criterion >= 0.5 && < 0.6
+
+  GHC-Options:
+    -Wall -O2 -funbox-strict-fields
+
+  Ghc-Prof-Options:
+    -auto-all -caf-all
