@@ -8,11 +8,7 @@ module Data.Iteratee.Base
   , iterContM
   , joinIter
   , run
-  , iterIdent
-  , iterList
-  , iterStream
-  , iterConst
-  , length
+  , iterEnd
   , Enumerator
   , Enumeratee
   , exceptEnd
@@ -27,23 +23,17 @@ module Data.Iteratee.Base
   , enumChunk
   , enumCheck
   , enumMap
+  , enumSequence
   ) where
 
 ------------------------------------------------------------------------------
 -- Imports
 ------------------------------------------------------------------------------
 
---import Prelude hiding (null)
-import Prelude ()
-import Prelude.Base
-
+import Data.Word (Word8)
 import qualified Data.List as List
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as Byte
-import Data.Sequence (Seq)
-import qualified Data.Sequence as Seq
-import qualified Data.Foldable as Fold
---import qualified Data.Traversable as Trav
 
 import Data.Data
 import Data.Monoid (Monoid (..))
@@ -52,24 +42,14 @@ import Control.Applicative hiding (empty)
 import Control.Monad.Trans.Class
 import Control.Monad.IO.Class
 
-
 ------------------------------------------------------------------------------
---
 -- Streams
---
 ------------------------------------------------------------------------------
-
-type Buffer = Seq ByteString
 
 data Stream where
   End   :: Maybe SomeException -> Stream
-  Chunk :: Buffer -> Stream
+  Chunk :: !ByteString -> Stream
   deriving (Show, Typeable)
-
-
-------------------------------------------------------------------------------
--- Classes
-------------------------------------------------------------------------------
 
 instance Eq Stream where
   (End Nothing)   == (End Nothing)   = True
@@ -85,12 +65,8 @@ instance Monoid Stream where
 
 
 ------------------------------------------------------------------------------
-------------------------------------------------------------------------
---
 -- Iteratees
---
 ------------------------------------------------------------------------------
-------------------------------------------------------------------------
 
 newtype Iteratee m a = Iteratee
   { runIter
@@ -99,11 +75,6 @@ newtype Iteratee m a = Iteratee
       -> ((Stream -> Iteratee m a) -> Maybe SomeException -> m r)
       -> m r
   }
-
-
-------------------------------------------------------------------------------
--- Classes
-------------------------------------------------------------------------------
 
 instance (Functor m, Monad m) => Functor (Iteratee m) where
   fmap f m = Iteratee $ \on_done on_cont ->
@@ -121,7 +92,7 @@ instance (Monad m) => Monad (Iteratee m) where
     {-# INLINE (>>=) #-}
     m >>= f = Iteratee $ \on_done on_cont ->
        let m_done a (Chunk s)
-                  | Seq.null s = runIter (f a) on_done on_cont
+                  | Byte.null s = runIter (f a) on_done on_cont
 	   m_done a stream = runIter (f a) (\x _ -> on_done x stream) f_cont
               where f_cont k Nothing = runIter (k stream) on_done on_cont
                     f_cont k e       = on_cont k e
@@ -137,7 +108,6 @@ instance (MonadIO m) => MonadIO (Iteratee m) where
 
 ------------------------------------------------------------------------------
 -- Combinators
-------------------------------------------------------------------------------
 
 iterDone :: a -> Stream -> Iteratee m a
 iterDone x str = Iteratee $ \on_done _ -> on_done x str
@@ -164,6 +134,7 @@ joinIter outer = outer >>=
       on_cont  _ (Just e) = runIter (throwErr e) od oc
       on_cont' _ e        = runIter (throwErr (maybe exceptDiv id e)) od oc
   in runIter inner on_done on_cont
+{-# INLINE joinIter #-}
 
 run :: Monad m => Iteratee m a -> m a
 run iter = runIter iter on_done on_cont
@@ -172,56 +143,17 @@ run iter = runIter iter on_done on_cont
   on_cont  k Nothing = runIter (k (End Nothing)) on_done on_cont'
   on_cont  _ e       = error $ "control message: " List.++ show e
   on_cont' _ e       = error $ "control message: " List.++ show e
+{-# INLINE run #-}
 
-iterIdent :: (Monad m) => Iteratee m ByteString
-iterIdent = liftIter (step mempty)
+iterEnd :: (Monad m) => Iteratee m (Maybe SomeException)
+iterEnd = liftIter check
   where
-  step acc (Chunk str)
-    | Seq.null str = liftIter (step acc)
-    | otherwise    = liftIter (step (acc `mappend` Fold.fold str))
-  step acc str     = iterDone acc str
-
-
-{-
-iterIdent' :: (Monad m, Monoid a) => Iteratee m a
-iterIdent' = liftIter (step mempty)
-  where
-  step acc (Chunk str)
-    | Seq.null str = liftIter (step acc)
-    | otherwise    = liftIter (step (acc `mappend` return (Fold.fold str)))
-  step acc str     = iterDone acc str
--}
-
-iterList :: (Monad m) => Iteratee m [ByteString]
-iterList = liftIter (step mempty)
-  where
-  step acc (Chunk str)
-    | Seq.null str = liftIter (step acc)
-    | otherwise    = liftIter (step (acc `mappend` [Fold.fold str]))
-  step acc str     = iterDone acc str
-
-iterStream :: (Monad m) => Iteratee m Buffer
-iterStream = liftIter (step mempty)
-  where
-  step acc (Chunk str)
-    | Seq.null str = liftIter (step acc)
-    | otherwise    = liftIter (step (acc `mappend` str))
-  step acc str     = iterDone acc str
-
-iterConst :: (Monad m) => a -> Iteratee m a
-iterConst x = iterDone x mempty
-
-length :: (Monad m) => Iteratee m Int
-length = liftIter (step 0)
-  where
-  step !acc (Chunk str) = liftIter (step (acc + Fold.foldl' size 0 str))
-  step !acc str         = iterDone acc str
-  size !acc str         = acc + Byte.length str
+  check s@(End e) = iterDone (Just $ maybe exceptEnd id e) s
+  check s         = iterDone Nothing s
+{-# INLINE iterEnd #-}
 
 ------------------------------------------------------------------------------
---
 -- Enumerators
---
 ------------------------------------------------------------------------------
 
 type Enumerator m a =
@@ -229,10 +161,6 @@ type Enumerator m a =
 
 type Enumeratee m a =
   Iteratee m a -> Iteratee m (Iteratee m a)
-
-------------------------------------------------------------------------------
--- Combinators
-------------------------------------------------------------------------------
 
 exceptEnd :: SomeException
 exceptEnd = toException $ ErrorCall "End"
@@ -247,17 +175,10 @@ throwRecov :: Monad m => SomeException -> (Stream -> Iteratee m a)
 		    -> Iteratee m a
 throwRecov e i = Iteratee $ \_ on_cont -> on_cont i (Just e)
 
-
--- Produce the End error message to be passed to throwErr.
--- If the stream was terminated because of an error, keep the original
--- error message.
 setEnd :: Stream -> SomeException
 setEnd (End (Just e)) = e
 setEnd _              = exceptEnd
 
--- The most primitive enumerator: applies the iteratee to the terminated
--- stream. The result is the iteratee usually in the done state.
--- A `good' iteratee must move to the done state upon receiving the End
 enumEnd :: Monad m => Enumerator m a
 enumEnd iter = runIter iter on_done on_cont
   where
@@ -266,9 +187,8 @@ enumEnd iter = runIter iter on_done on_cont
   on_cont  k e       = return $ iterCont k e
   on_cont' _ Nothing = return $ throwErr exceptDiv
   on_cont' k e       = return $ iterCont k e
+{-# INLINE enumEnd #-}
 
--- Another primitive enumerator: tell the Iteratee the stream terminated
--- with an error
 enumErr :: Monad m => SomeException ->  Enumerator m a
 enumErr e iter = runIter iter on_done on_cont
   where
@@ -277,29 +197,18 @@ enumErr e iter = runIter iter on_done on_cont
   on_cont  k e'      = return $ iterCont k e'
   on_cont' _ Nothing = return $ throwErr exceptDiv
   on_cont' k e'      = return $ iterCont k e'
+{-# INLINE enumErr #-}
 
--- The composition of two enumerators: just the functional composition.
--- It is convenient to flip the order of the arguments of the composition
--- though: in e1 >>> e2, e1 is executed first.
--- This operation is similar to the left-to-right composition in
--- Control.Category.
--- The composition of enumerators is not exactly (.): we take care
--- to force the result of the enumerator e1 before passing it to e2.
--- We are thus certain that all effects of enumerating e1 happen before
--- the effects of e2.
 (>>>):: Monad m => Enumerator m a -> Enumerator m a -> Enumerator m a
 e1 >>> e2 = \i -> e1 i >>= e2
 
 
--- The pure 1-chunk enumerator
--- It passes a given string to the iteratee in one chunk
--- This enumerator does no IO and is useful for testing of base parsing
---enum :: Monad m => ByteString -> Enumerator ByteString m a
 enum :: Monad m => ByteString -> Enumerator m a
 enum str iter = runIter iter iterDoneM on_cont
   where
-  on_cont k Nothing = return (k (Chunk (Seq.singleton str)))
+  on_cont k Nothing = return (k (Chunk str))
   on_cont k e       = return $ iterCont k e
+{-# INLINE enum #-}
 
 enumChunk :: (Monad m) => Int -> ByteString -> Enumerator m a
 enumChunk n str iter
@@ -312,22 +221,31 @@ enumChunk n str iter
     | otherwise      = runIter iter' iterDoneM on_cont
         where
         (s1, s2) = Byte.splitAt n str'
-        on_cont k Nothing = (enum' s2 . k) (Chunk (Seq.singleton s1))
+        on_cont k Nothing = (enum' s2 . k) (Chunk s1)
         on_cont k e       = return $ iterCont k e
+{-# INLINE enumChunk #-}
 
 enumCheck :: (Monad m) =>
-    ((Stream -> Iteratee m a) -> Iteratee m (Iteratee m a)) ->
-    Enumeratee m a
+  ((Stream -> Iteratee m a) -> Iteratee m (Iteratee m a)) -> Enumeratee m a
 enumCheck f inner = Iteratee $ \od oc ->
   let on_done x s = od (iterDone x s) (Chunk mempty)
       on_cont k Nothing  = runIter (f k) od oc
       on_cont _ (Just e) = runIter (throwErr e) od oc
   in runIter inner on_done on_cont
+{-# INLINE enumCheck #-}
 
-enumMap :: (Monad m) => (ByteString -> ByteString) -> Enumeratee m a
+enumMap :: (Monad m) => (Word8 -> Word8) -> Enumeratee m a
 enumMap f = enumCheck (liftIter . step)
   where
   step k (Chunk str)
-    | Seq.null str = liftIter (step k)
-    | otherwise    = enumMap f (k (Chunk (fmap f str)))
-  step k str       = iterDone (liftIter k) str
+    | Byte.null str = liftIter (step k)
+    | otherwise     = enumMap f (k (Chunk (Byte.map f str)))
+  step k str        = iterDone (liftIter k) str
+{-# INLINE enumMap #-}
+
+enumSequence :: (Monad m) => Iteratee m ByteString -> Enumeratee m a
+enumSequence iter = enumCheck check
+  where
+  check k = iterEnd >>= maybe (step k) (iterDone (liftIter k) . End . Just)
+  step  k = iter >>= enumSequence iter . k . Chunk
+{-# INLINE enumSequence #-}

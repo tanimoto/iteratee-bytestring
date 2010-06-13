@@ -15,18 +15,18 @@ Library
   Hs-Source-Dirs:
     src
 
-  Exposed-modules:
+  Exposed-Modules:
     Data.Iteratee
+    Data.Iteratee.ByteString
     Data.Iteratee.Exception
     Data.Iteratee.IO
 
-  Other-modules:
+  Other-Modules:
     Data.Iteratee.Base
+    Data.Iteratee.ByteString.Base
 
-  Build-depends:
+  Build-Depends:
     base >= 4 && < 5,
-    containers >= 0.3 && < 0.4,
-    prelude-core >= 0.1 && < 0.2,
     bytestring >= 0.9 && < 1.0,
     transformers >= 0.2 && < 0.3,
     MonadCatchIO-transformers >= 0.2 && < 0.3
@@ -40,13 +40,12 @@ Library
   Ghc-Prof-Options:
     -auto-all -caf-all
 
-Executable bench_strings
+Executable bench-length
   Hs-Source-Dirs: tests
-  Main-Is: bench_strings.hs
+  Main-Is: bench-length.hs
 
-  Build-depends:
+  Build-Depends:
     base >= 4 && < 5,
-    prelude-core >= 0.1 && < 0.2,
     bytestring >= 0.9 && < 1.0,
     iteratee-bytestring >= 0.1 && < 0.2,
     criterion >= 0.5 && < 0.6

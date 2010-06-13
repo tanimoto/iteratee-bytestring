@@ -1,5 +1,5 @@
 module Data.Iteratee.IO
-  ( defaultBufferSize
+  ( defaultSize
   , enumHandleSize
   , enumHandle
   , enumFileSize
@@ -13,7 +13,7 @@ module Data.Iteratee.IO
 import Data.Iteratee.Base
 
 import qualified Data.ByteString as Byte
-import qualified Data.Sequence as Seq
+--import qualified Data.Sequence as Seq
 
 import Control.Exception (SomeException, ErrorCall (..), toException)
 import qualified Control.Monad.CatchIO as CIO
@@ -27,8 +27,8 @@ import System.IO (Handle, IOMode (..), openFile, hClose, hGetBuf)
 -- Constants
 ------------------------------------------------------------------------------
 
-defaultBufferSize :: Int
-defaultBufferSize = 2048
+defaultSize :: Int
+defaultSize = 2048
 
 ------------------------------------------------------------------------------
 -- IO Enumerators
@@ -53,11 +53,11 @@ enumHandleSize size hand iter = do
       Right 0 -> return $ liftIter k
       Right m -> do
         str <- Byte.packCStringLen (p, m)
-        loop p (k (Chunk (Seq.singleton str)))
+        loop p (k (Chunk str))
 {-# INLINE enumHandleSize #-}
 
 enumHandle :: Handle -> Enumerator IO a
-enumHandle = enumHandleSize defaultBufferSize
+enumHandle = enumHandleSize defaultSize
 {-# INLINE enumHandle #-}
 
 enumFileSize :: Int -> FilePath -> Enumerator IO a
@@ -68,5 +68,5 @@ enumFileSize size file iter = CIO.bracket
 {-# INLINE enumFileSize #-}
 
 enumFile :: FilePath -> Enumerator IO a
-enumFile = enumFileSize defaultBufferSize
+enumFile = enumFileSize defaultSize
 {-# INLINE enumFile #-}

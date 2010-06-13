@@ -5,8 +5,6 @@ module Main where
 -- Imports
 ------------------------------------------------------------------------
 
-import Prelude ()
-import Prelude.Base
 import qualified Data.List as List
 
 import qualified Data.ByteString as BS
