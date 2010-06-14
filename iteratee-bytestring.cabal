@@ -11,6 +11,10 @@ Build-type:          Simple
 
 Cabal-version:       >=1.8
 
+Flag build-tests
+  Description: Build Tests
+  Default:     False
+
 Library
   Hs-Source-Dirs:
     src
@@ -44,11 +48,15 @@ Executable bench-length
   Hs-Source-Dirs: tests
   Main-Is: bench-length.hs
 
-  Build-Depends:
-    base >= 4 && < 5,
-    bytestring >= 0.9 && < 1.0,
-    iteratee-bytestring >= 0.1 && < 0.2,
-    criterion >= 0.5 && < 0.6
+  If flag(build-tests)
+    Build-Depends:
+      base >= 4 && < 5,
+      bytestring >= 0.9 && < 1.0,
+      iteratee-bytestring >= 0.1 && < 0.2,
+      criterion >= 0.5 && < 0.6
+  Else
+    Executable: False
+    Buildable:  False
 
   GHC-Options:
     -Wall -O2 -funbox-strict-fields
