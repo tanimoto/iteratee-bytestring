@@ -13,10 +13,9 @@ module Data.Iteratee.IO
 import Data.Iteratee.Base
 
 import qualified Data.ByteString as Byte
---import qualified Data.Sequence as Seq
 
 import Control.Exception (SomeException, ErrorCall (..), toException)
-import qualified Control.Monad.CatchIO as CIO
+import qualified Control.Monad.CatchIO as Catch
 import Control.Monad.IO.Class (liftIO)
 
 import Foreign.Marshal.Alloc (mallocBytes, free)
@@ -47,7 +46,7 @@ enumHandleSize size hand iter = do
   on_cont _ k e       = return $ iterCont k e
 
   do_read k p = do
-    n <- liftIO (CIO.try $ hGetBuf hand p size :: IO (Either SomeException Int))
+    n <- liftIO (Catch.try $ hGetBuf hand p size :: IO (Either SomeException Int))
     case n of
       Left  _ -> return $ k (End (Just (toException (ErrorCall "IO Error"))))
       Right 0 -> return $ liftIter k
@@ -61,10 +60,10 @@ enumHandle = enumHandleSize defaultSize
 {-# INLINE enumHandle #-}
 
 enumFileSize :: Int -> FilePath -> Enumerator IO a
-enumFileSize size file iter = CIO.bracket
+enumFileSize size file iter = Catch.bracket
   (openFile file ReadMode)
   (hClose)
-  (\hand -> enumHandleSize size hand iter)
+  (flip (enumHandleSize size) iter)
 {-# INLINE enumFileSize #-}
 
 enumFile :: FilePath -> Enumerator IO a
