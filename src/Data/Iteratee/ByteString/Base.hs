@@ -10,6 +10,7 @@ module Data.Iteratee.ByteString.Base
   , toByteString
   , toList
   , toHandle
+  , toFile
   , enumTake
   ) where
 
@@ -28,7 +29,7 @@ import qualified Data.ByteString as Byte
 import Data.Monoid (Monoid (..))
 import Control.Monad.Trans.Class (lift)
 
-import System.IO (Handle)
+import System.IO (Handle, IOMode (..), openFile, hClose)
 
 ------------------------------------------------------------------------------
 -- Basic Iteratees
@@ -142,6 +143,11 @@ toHandle h = liftIter step
                       >> liftIter step
   step str          = iterDone () str
 {-# INLINE toHandle #-}
+
+toFile :: FilePath -> Iteratee IO ()
+toFile file =
+  lift (openFile file WriteMode) >>= \h-> toHandle h >> lift (hClose h)
+{-# INLINE toFile #-}
 
 ------------------------------------------------------------------------------
 -- Enumeratees
